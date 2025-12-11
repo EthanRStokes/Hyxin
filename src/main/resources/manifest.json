@@ -1,0 +1,21 @@
+{
+  "Group": "${project_group}",
+  "Name": "${name}",
+  "Version": "${version}",
+  "Description": "${description}",
+  "Authors": [
+    {
+      "Name": "${author}"
+    }
+  ],
+  "Website": "${website}",
+  "ServerVersion": "${server_version}",
+  "Dependencies": {},
+  "OptionalDependencies": {},
+  "DisabledByDefault": false,
+  "Hyxin": {
+    "Configs": [
+      "hyxin.mixin.json"
+    ]
+  }
+}
