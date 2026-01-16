@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.Mixins;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 
 public class HyxinTransformer implements ClassTransformer {
@@ -40,7 +41,68 @@ public class HyxinTransformer implements ClassTransformer {
         // TODO Early plugins can be loaded from other folders via commandline args, but we don't have access yet.
         // TODO Normal plugins can not have Mixins yet, because of classloader issues. Waiting on input from Hytale team.
 
+        // Use hyxin-target property to load manifests from given build/resource folders.
+        final String hyxinTarget = System.getProperty("hyxin-target");
+        Constants.log("Targets: " + hyxinTarget);
+        if (hyxinTarget != null && !hyxinTarget.isBlank()) {
+            final String[] parts = hyxinTarget.split(",");
+            for (String rawPath : parts) {
+                final String trimmed = rawPath.trim();
+                if (trimmed.isEmpty()) continue;
+                final File f = new File(trimmed);
+                try {
+                    if (f.isDirectory()) {
+                        // Try reading a plain manifest.json from the top-level of the directory
+                        final PluginManifest manifest = PluginScanner.readManifestFromDirectory(f);
+                        if (manifest != null) {
+                            Constants.log("Loaded manifest.json from directory '" + f.getAbsolutePath() + "'");
+                            plugins.addManifest(f, manifest);
+                        }
+                        else {
+                            // If directory contains jars, scan them as well.
+                            File[] files = f.listFiles();
+                            if (files != null) {
+                                for (File child : files) {
+                                    if (child.isFile() && child.getName().toLowerCase().endsWith(".jar")) {
+                                        try {
+                                            final PluginManifest m = PluginScanner.readManifest(child);
+                                            if (m != null) {
+                                                Constants.log("Loaded manifest.json from jar '" + child.getAbsolutePath() + "'");
+                                                plugins.addManifest(child, m);
+                                            }
+                                        }
+                                        catch (IOException e) {
+                                            System.err.println("[Hyxin] Failed to read jar '" + child.getAbsolutePath() + "' when scanning hyxin-target.");
+                                            e.printStackTrace(System.err);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if (f.isFile() && f.getName().toLowerCase().endsWith(".jar")) {
+                        try {
+                            final PluginManifest manifest = PluginScanner.readManifest(f);
+                            if (manifest != null) {
+                                Constants.log("Loaded manifest.json from jar '" + f.getAbsolutePath() + "'");
+                                plugins.addManifest(f, manifest);
+                            }
+                        }
+                        catch (IOException e) {
+                            System.err.println("[Hyxin] Failed to read jar '" + f.getAbsolutePath() + "' from hyxin-target.");
+                            e.printStackTrace(System.err);
+                        }
+                    }
+                }
+                catch (Exception e) {
+                    System.err.println("[Hyxin] Error while processing hyxin-target path '" + trimmed + "'.");
+                    e.printStackTrace(System.err);
+                }
+            }
+        }
+
         MixinBootstrap.init();
+
 
         // Load Mixin configs from plugin manifests.
         for (Map.Entry<File, PluginManifest> entry : plugins.entries().entrySet()) {

@@ -71,6 +71,38 @@ public class PluginScanner {
     }
 
     /**
+     * Reads a manifest.json file from a plain directory (not a jar). This supports the hyxin-target usage where
+     * build/resource folders or other directories may contain the top-level manifest.json.
+     *
+     * @param dir The directory to read manifest.json from.
+     * @return The parsed PluginManifest, or null if not present.
+     * @throws IOException If the file could not be read.
+     */
+    public static PluginManifest readManifestFromDirectory(File dir) throws IOException {
+        final File manifestFile = new File(dir, "manifest.json");
+        if (manifestFile.isFile()) {
+            try (Reader reader = new java.io.FileReader(manifestFile)) {
+                return GSON.fromJson(reader, PluginManifest.class);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Allows external callers to register a manifest with this scanner instance.
+     * Useful for adding manifests discovered through other means (for example
+     * from the hyxin-target property paths).
+     *
+     * @param source   The file or directory the manifest was read from.
+     * @param manifest The parsed manifest object.
+     */
+    public void addManifest(File source, PluginManifest manifest) {
+        if (manifest != null) {
+            manifests.put(source, manifest);
+        }
+    }
+
+    /**
      * Gets an immutable map of plugin files and their manifest data.
      *
      * @return A map of plugin files to their manifest data.
